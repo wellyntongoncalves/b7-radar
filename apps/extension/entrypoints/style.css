@@ -23,6 +23,13 @@
   line-height: 1.4;
 }
 
+.b7-panel--search {
+  right: auto;
+  left: 16px;
+  top: 120px;
+  width: 300px;
+}
+
 .b7-panel__header {
   display: flex;
   align-items: center;
