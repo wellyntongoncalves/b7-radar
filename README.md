@@ -20,12 +20,14 @@ sempre com **origem e nível de confiança explícitos**.
 ```
 apps/
   extension/   Extensão WXT + React (MV3, Chrome/Edge) — painel na página de produto
-  web/         Aplicação web (Next.js) — a construir
-  api/         Backend Fastify (opcional) — a construir
+  web/         Aplicação web (Next.js) — dashboard + B7 Margem
+  api/         Backend Fastify (opcional) — /health, /v1/calculations, OAuth ML
   worker/      Jobs de monitoramento (fase 2) — a construir
 packages/
   shared-types/         Camada de honestidade: MetricValue, classificação, confiança
   calculations/         Funções puras: margem, ROI, ponto de equilíbrio, oportunidade
+  auth/                 Criptografia de tokens (AES-256-GCM) + OAuth PKCE
+  database/             Schema Drizzle (PostgreSQL/Supabase) + migrations
   brand/                Design tokens + logotipos B7 (7 blocos) + favicon
   marketplace-adapters/ MarketplaceAdapter + adapter DOM ML + registro de seletores + fixtures
 docs/                   Guia de marca, matriz de dados, arquitetura
