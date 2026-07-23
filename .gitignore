@@ -16,6 +16,9 @@ dist/
 apps/extension/.wxt/
 apps/extension/.output/
 
+# next.js
+next-env.d.ts
+
 # env & secrets
 .env
 .env.*

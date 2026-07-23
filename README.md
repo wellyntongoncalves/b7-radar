@@ -74,8 +74,9 @@ O ambiente de desenvolvimento remoto tem **egresso restrito** e não alcança `a
 nem `supabase.com` diretamente. O deploy é feito **via GitHub**, sem depender de rede do
 container:
 
-1. **Vercel** → _Import Git Repository_ apontando para este repositório; a Vercel builda e
-   publica `apps/web` a cada push.
+1. **Vercel** → _Import Git Repository_ apontando para este repositório. Em _Settings_, defina
+   **Root Directory = `apps/web`** e mantenha "Include files outside the Root Directory" ligado
+   (o monorepo pnpm instala a partir da raiz). A Vercel builda e publica `apps/web` a cada push.
 2. **Supabase** → crie o projeto no dashboard e configure `DATABASE_URL`, `SUPABASE_URL`,
    `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` como _Environment Variables_ na Vercel.
    As migrations rodam via GitHub Action ou no build.
