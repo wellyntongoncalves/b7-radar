@@ -1,0 +1,124 @@
+@import '@b7/brand/tokens.css';
+
+body {
+  margin: 0;
+  width: 340px;
+  background: var(--b7-bg);
+  color: var(--b7-text);
+  font-family: var(--b7-font-body);
+  font-size: 13px;
+}
+
+.b7-popup {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.b7-popup__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.b7-popup__header strong {
+  font-family: var(--b7-font-display);
+  font-size: 15px;
+}
+.b7-popup__header > div {
+  flex: 1;
+}
+.b7-popup__slogan {
+  color: var(--b7-text-muted);
+  font-size: 10px;
+}
+
+.b7-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--b7-gradient);
+  display: inline-block;
+}
+
+.b7-card {
+  background: var(--b7-surface);
+  border: 1px solid var(--b7-border);
+  border-radius: var(--b7-radius-card);
+  padding: 12px;
+}
+.b7-card h2 {
+  font-family: var(--b7-font-display);
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--b7-text-muted);
+  margin-bottom: 8px;
+}
+input,
+select {
+  padding: 7px 8px;
+  border: 1px solid var(--b7-border);
+  border-radius: var(--b7-radius-input);
+  background: var(--b7-bg);
+  color: var(--b7-text);
+  font-size: 13px;
+}
+
+.b7-btn {
+  border: none;
+  border-radius: var(--b7-radius-button);
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+.b7-btn--primary {
+  background: var(--b7-gradient);
+  color: #fff;
+}
+
+.b7-icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--b7-text-muted);
+}
+
+.b7-fav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.b7-fav-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.b7-fav-list a {
+  color: var(--b7-blue);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.b7-muted {
+  color: var(--b7-text-muted);
+}
+.b7-popup__footer {
+  text-align: center;
+  color: var(--b7-text-muted);
+  font-size: 10px;
+}

@@ -1,0 +1,59 @@
+/* B7 Radar design tokens — CSS custom properties (runtime mirror of tokens.ts).
+   Light theme is the default; [data-theme="dark"] overrides. */
+:root,
+[data-theme='light'] {
+  --b7-blue: #2457ff;
+  --b7-violet: #6d35ff;
+  --b7-cyan: #19c9e8;
+  --b7-black: #0b0d12;
+  --b7-white: #f6f8fc;
+  --b7-gray: #667085;
+
+  --b7-success: #16b364;
+  --b7-warning: #f79009;
+  --b7-error: #f04438;
+  --b7-info: #2e90fa;
+
+  --b7-gradient: linear-gradient(135deg, #2457ff 0%, #6d35ff 55%, #19c9e8 100%);
+
+  /* surfaces */
+  --b7-bg: #f6f8fc;
+  --b7-surface: #ffffff;
+  --b7-surface-muted: #eef1f7;
+  --b7-border: #e2e7f0;
+  --b7-text: #0b0d12;
+  --b7-text-muted: #667085;
+
+  --b7-font-display: 'Sora', system-ui, sans-serif;
+  --b7-font-body: 'Inter', system-ui, sans-serif;
+
+  --b7-radius-input: 6px;
+  --b7-radius-button: 8px;
+  --b7-radius-card: 12px;
+
+  --b7-shadow-card: 0 1px 2px rgba(11, 13, 18, 0.06), 0 4px 12px rgba(11, 13, 18, 0.06);
+  --b7-shadow-panel: 0 8px 32px rgba(11, 13, 18, 0.16);
+}
+
+[data-theme='dark'] {
+  --b7-bg: #0b0d12;
+  --b7-surface: #14171f;
+  --b7-surface-muted: #1c202b;
+  --b7-border: #262c3a;
+  --b7-text: #f6f8fc;
+  --b7-text-muted: #98a2b3;
+
+  --b7-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --b7-shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --b7-bg: #0b0d12;
+    --b7-surface: #14171f;
+    --b7-surface-muted: #1c202b;
+    --b7-border: #262c3a;
+    --b7-text: #f6f8fc;
+    --b7-text-muted: #98a2b3;
+  }
+}

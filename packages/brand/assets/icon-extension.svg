@@ -1,0 +1,21 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="B7 Radar">
+  <title>B7 Radar</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2457FF"/>
+      <stop offset="0.55" stop-color="#6D35FF"/>
+      <stop offset="1" stop-color="#19C9E8"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="128" height="128" rx="28" fill="url(#tile)"/>
+  <!-- Seven white blocks forming the 7 on the gradient tile. -->
+  <g fill="#FFFFFF">
+    <rect x="30" y="30" width="16" height="16" rx="4"/>
+    <rect x="50" y="30" width="16" height="16" rx="4"/>
+    <rect x="70" y="30" width="16" height="16" rx="4"/>
+    <rect x="90" y="30" width="16" height="16" rx="4"/>
+    <rect x="70" y="50" width="16" height="16" rx="4"/>
+    <rect x="56" y="70" width="16" height="16" rx="4"/>
+    <rect x="42" y="90" width="16" height="16" rx="4"/>
+  </g>
+</svg>

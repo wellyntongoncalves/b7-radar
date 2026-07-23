@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="B7 Radar">
+  <title>B7 Radar</title>
+  <!-- Monochrome variant: inherits color via currentColor. Works on light or
+       dark backgrounds and in single-ink print. -->
+  <g fill="currentColor">
+    <rect x="13" y="13" width="9" height="9" rx="2.5"/>
+    <rect x="24" y="13" width="9" height="9" rx="2.5"/>
+    <rect x="35" y="13" width="9" height="9" rx="2.5"/>
+    <rect x="46" y="13" width="9" height="9" rx="2.5"/>
+    <rect x="35" y="24" width="9" height="9" rx="2.5"/>
+    <rect x="27" y="35" width="9" height="9" rx="2.5"/>
+    <rect x="19" y="46" width="9" height="9" rx="2.5"/>
+  </g>
+</svg>

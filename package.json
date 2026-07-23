@@ -1,0 +1,30 @@
+{
+  "name": "b7-radar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "B7 Radar — Inteligência de mercado por Bloco 7. Dados organizados. Decisões mais fortes.",
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:calc": "pnpm --filter @b7/calculations test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "prettier": "^3.3.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@vitejs/plugin-react": "^4.3.4"
+    }
+  }
+}
