@@ -11,7 +11,14 @@ import {
   type NormalizedSellerRef,
 } from '@b7/shared-types';
 import type { AdapterSourceMetadata, MarketplaceAdapter, PageContext } from '../adapter.js';
-import { captured, firstText, parseBrNumber, parseFirstInt, unavailable } from '../capture.js';
+import {
+  captured,
+  firstText,
+  parseBrNumber,
+  parseFirstInt,
+  parseGroupedQuantity,
+  unavailable,
+} from '../capture.js';
 import { ML_SELECTOR_REGISTRY_VERSION, mlSelectors } from './selectors.js';
 
 const SOURCE = 'mercadolivre.dom';
@@ -43,10 +50,9 @@ export class MercadoLivreDomAdapter implements MarketplaceAdapter {
     const s = mlSelectors.product;
 
     const title = textField(ctx, s.title, ConfidenceLevel.High, CaptureMethod.DomText, now);
-    const price = numberField(ctx, s.price, now, 'preço');
+    const price = priceField(ctx, now);
     const originalPrice = numberField(ctx, s.originalPrice, now, 'preço original');
-    const soldRaw = firstText(ctx.root, s.soldQuantity);
-    const soldQuantity = intFromField(soldRaw, now, 'quantidade vendida');
+    const soldQuantity = groupedField(firstText(ctx.root, s.soldQuantity), now, 'quantidade vendida');
     const availableQuantity = intFromField(
       firstText(ctx.root, s.availableQuantity),
       now,
@@ -199,6 +205,48 @@ function intFromField(text: string | null, now: string, label: string): Captured
   return intFromNumber(n, now, label);
 }
 
+/** Reads the price combining the integer and cents parts (R$ 200,85). */
+function priceField(ctx: PageContext, now: string): CapturedField<number> {
+  const s = mlSelectors.product;
+  const whole = parseBrNumber(firstText(ctx.root, s.price));
+  if (whole === null) {
+    return unavailable<number>(SOURCE, CaptureMethod.DomText, now, 'preço não encontrado');
+  }
+  const centsText = firstText(ctx.root, s.priceCents);
+  const centsDigits = centsText?.replace(/\D/g, '').slice(0, 2) ?? '';
+  const cents = centsDigits ? Number(centsDigits.padEnd(2, '0')) : 0;
+  const value = whole + (Number.isFinite(cents) ? cents / 100 : 0);
+  return captured(value, {
+    classification: DataClassification.Observed,
+    confidence: ConfidenceLevel.High,
+    source: SOURCE,
+    method: CaptureMethod.DomText,
+    capturedAt: now,
+  });
+}
+
+/**
+ * Reads a marketplace-reported quantity honestly: preserves the grouped text
+ * ("+10 mil") and flags it, applying the magnitude word so the value is never
+ * off by orders of magnitude nor presented as an exact figure.
+ */
+function groupedField(text: string | null, now: string, label: string): CapturedField<number> {
+  const parsed = parseGroupedQuantity(text);
+  if (parsed.value === null) {
+    return unavailable<number>(SOURCE, CaptureMethod.DomText, now, `${label} não encontrado`);
+  }
+  return {
+    value: parsed.value,
+    classification: DataClassification.Observed,
+    confidence: parsed.isGrouped ? ConfidenceLevel.Low : ConfidenceLevel.Medium,
+    source: SOURCE,
+    method: CaptureMethod.DomText,
+    capturedAt: now,
+    ...(parsed.rawText ? { rawText: parsed.rawText } : {}),
+    isGrouped: parsed.isGrouped,
+  };
+}
+
 function ratingField(text: string | null, now: string): CapturedField<number> {
   const n = text ? Number(text.replace(',', '.').match(/[\d.]+/)?.[0]) : NaN;
   return Number.isFinite(n)
@@ -232,11 +280,10 @@ function boolField(value: boolean, now: string): CapturedField<boolean> {
   });
 }
 
-function logisticsField(ctx: PageContext, now: string): CapturedField<LogisticsType> {
-  const s = mlSelectors.product;
-  const free = firstText(ctx.root, s.freeShipping);
-  const value = free ? LogisticsType.Full : LogisticsType.Unknown;
-  return enumField(value, now);
+function logisticsField(_ctx: PageContext, now: string): CapturedField<LogisticsType> {
+  // Free shipping is NOT the same as Full/Fulfillment. Without a reliable
+  // fulfillment selector we report Unknown rather than infer wrongly.
+  return enumField(LogisticsType.Unknown, now);
 }
 
 function idFromUrl(url: string, now: string): CapturedField<string> {

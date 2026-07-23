@@ -1,5 +1,12 @@
 # Matriz de disponibilidade dos dados
 
+> ⚠️ **Fonte de verdade:** [`spec-anuncio-atual.md`](./spec-anuncio-atual.md) prevalece sobre este
+> documento. A classe **Estimado (EST)** deixou de ser classe de **exibição** — vendas/receita
+> nunca são estimadas na UI. "Vendas informadas" é observado (texto agrupado preservado);
+> faturamento é **Calculado** (preço × quantidade informada); "vendas no período" só via conta
+> autorizada ou snapshots reais. As linhas abaixo marcadas EST descrevem o histórico do modelo,
+> não o que a UI exibe.
+
 Classificação: **OFI** Oficial · **OBS** Observado · **CAL** Calculado · **EST** Estimado ·
 **CFG** Configurado. Confiança: A(alta) / M(média) / B(baixa).
 

@@ -30,22 +30,25 @@ export function SearchSidebar({ listings }: { listings: NormalizedListing[] }) {
       {!collapsed && (
         <div className="b7-panel__body">
           <div className="b7-metrics-grid">
-            <Stat label="Preço médio" value={brl(agg.avgPriceReais)} />
-            <Stat label="Mediana" value={brl(agg.medianPriceReais)} />
-            <Stat label="Menor preço" value={brl(agg.minPriceReais)} />
-            <Stat label="Maior preço" value={brl(agg.maxPriceReais)} />
-            <Stat label="Vendas observadas" value={agg.totalObservedSales.toLocaleString('pt-BR')} />
+            <Stat label="Anúncios analisados" value={agg.count.toLocaleString('pt-BR')} />
+            <Stat label="Com preço" value={agg.withPrice.toLocaleString('pt-BR')} />
+            <Stat label="Preço médio" value={brl(agg.avgPriceReais)} scope="da página" />
+            <Stat label="Mediana" value={brl(agg.medianPriceReais)} scope="da página" />
+            <Stat label="Menor preço" value={brl(agg.minPriceReais)} scope="da página" />
+            <Stat label="Maior preço" value={brl(agg.maxPriceReais)} scope="da página" />
             <Stat
-              label="Vendas estimadas"
-              value={agg.totalEstimatedSales.toLocaleString('pt-BR')}
-              estimated
+              label="Vendas informadas (total)"
+              value={
+                agg.totalReportedSales.toLocaleString('pt-BR') + (agg.hasGroupedSales ? '+' : '')
+              }
+              scope="da página"
             />
-            <Stat label="Receita estimada" value={brl(agg.estimatedRevenueReais)} estimated />
             <Stat label="Com frete grátis" value={`${agg.freeShippingCount}/${agg.count}`} />
           </div>
           <p className="b7-disclaimer">
-            Vendas e receita estimadas são aproximações rotuladas, calculadas a partir dos
-            anúncios carregados nesta página — não são valores exatos.
+            Somatórios e médias são calculados sobre os anúncios carregados nesta página, a partir
+            das quantidades informadas pelo Mercado Livre (que podem ser agrupadas). Não são
+            estimativas de vendas.
           </p>
         </div>
       )}
@@ -53,16 +56,14 @@ export function SearchSidebar({ listings }: { listings: NormalizedListing[] }) {
   );
 }
 
-function Stat({ label, value, estimated }: { label: string; value: string; estimated?: boolean }) {
+function Stat({ label, value, scope }: { label: string; value: string; scope?: string }) {
   return (
     <div className="b7-metric">
       <div className="b7-metric__label">{label}</div>
       <div className="b7-metric__value">{value}</div>
-      {estimated && (
+      {scope && (
         <div className="b7-metric__tags">
-          <span className="b7-chip" style={{ color: 'var(--b7-warning)' }}>
-            Estimado
-          </span>
+          <span className="b7-chip b7-chip--muted">{scope}</span>
         </div>
       )}
     </div>

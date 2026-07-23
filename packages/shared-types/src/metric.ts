@@ -1,7 +1,8 @@
-import type {
+import {
   CaptureMethod,
   ConfidenceLevel,
   DataClassification,
+  type MetricScope,
 } from './classification.js';
 
 /** ISO-8601 UTC timestamp string. Storage is always UTC; the UI localizes. */
@@ -33,21 +34,39 @@ export interface MetricPeriod {
  * origin, confidence, freshness and (for calculated values) the formula.
  */
 export interface MetricValue<T = number> {
-  /** Stable key from the metric catalog, e.g. "estimated_gross_revenue". */
+  /** Stable key from the metric catalog, e.g. "gross_revenue_calc". */
   readonly key: string;
   /** The value itself, or null when unavailable (we never invent a value). */
   readonly value: T | null;
   readonly unit: MetricUnit;
   readonly classification: DataClassification;
   readonly confidence: ConfidenceLevel;
+  /**
+   * Scope this metric belongs to — so a catalog/seller number is never shown
+   * as the individual listing's. Required by the "Dados do Anúncio Atual" spec.
+   */
+  readonly scope: MetricScope;
   /** Origin string, e.g. "mercadolivre.dom", "mercadolivre.api", "user". */
   readonly source: string;
   readonly capturedAt: IsoUtcTimestamp;
   readonly method: CaptureMethod;
+  /** The listing this metric is bound to (isolation key). */
+  readonly listingId?: string;
+  readonly catalogProductId?: string;
+  readonly sellerId?: string;
+  readonly variationId?: string;
   readonly period?: MetricPeriod;
-  /** Formula key + version for calculated/estimated values. */
+  /** Formula key + version for calculated values. */
   readonly formula?: string;
   readonly formulaVersion?: string;
+  /** Raw text as shown by the marketplace (e.g. "+10 mil"), when grouped. */
+  readonly rawText?: string;
+  /** Marketplace presented a rounded value. */
+  readonly isRounded?: boolean;
+  /** Marketplace presented a grouped/bucketed value (e.g. "+10 mil"). */
+  readonly isGrouped?: boolean;
+  /** Known limitation shown in tooltips, in pt-BR. */
+  readonly limitation?: string;
   /** Human-readable note shown in tooltips, in pt-BR. */
   readonly note?: string;
   /** Message shown when value is null. */
@@ -58,6 +77,7 @@ export interface MetricValue<T = number> {
 export function unavailableMetric(
   key: string,
   unit: MetricUnit,
+  scope: MetricScope,
   source: string,
   capturedAt: IsoUtcTimestamp,
   method: CaptureMethod,
@@ -67,8 +87,9 @@ export function unavailableMetric(
     key,
     value: null,
     unit,
-    classification: 'OBSERVED' as DataClassification,
-    confidence: 'UNAVAILABLE' as ConfidenceLevel,
+    classification: DataClassification.Observed,
+    confidence: ConfidenceLevel.Unavailable,
+    scope,
     source,
     capturedAt,
     method,

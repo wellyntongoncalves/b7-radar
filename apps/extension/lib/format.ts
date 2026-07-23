@@ -9,6 +9,9 @@ import {
 /** Formats a metric's value for display according to its unit. */
 export function formatMetricValue(m: MetricValue): string {
   if (m.value === null) return '—';
+  // Honesty: when the marketplace grouped the value ("+10 mil"), show the raw
+  // text exactly, never a false-precision number.
+  if (m.isGrouped && m.rawText) return m.rawText;
   switch (m.unit) {
     case MetricUnit.BRL:
       return formatBRL(Math.round((m.value as number) * 100));

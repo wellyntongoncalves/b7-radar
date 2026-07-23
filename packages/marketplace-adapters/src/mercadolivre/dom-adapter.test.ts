@@ -93,3 +93,30 @@ describe('getSourceMetadata', () => {
     expect(meta.selectorRegistryVersion).toMatch(/ml-selectors@/);
   });
 });
+
+// Spec §9: data from listing A must never appear on card B. Each result is
+// bound to its own listingId extracted from its own link.
+describe('anti-mixing A/B', () => {
+  const results = adapter.extractSearchResults({
+    url: 'https://lista.mercadolivre.com.br/relogio',
+    root: makeSearchFixtureRoot(),
+    nowIso: NOW,
+  });
+
+  it('binds each result to its own distinct listingId', () => {
+    const a = results[0];
+    const b = results[1];
+    expect(a?.externalListingId.value).toBeTruthy();
+    expect(b?.externalListingId.value).toBeTruthy();
+    expect(a?.externalListingId.value).not.toBe(b?.externalListingId.value);
+  });
+
+  it('never carries A values onto B', () => {
+    const a = results[0];
+    const b = results[1];
+    expect(a?.price.value).not.toBe(b?.price.value);
+    expect(a?.url).not.toBe(b?.url);
+    // A's id must not leak into B's url.
+    expect(b?.url).not.toContain(a?.externalListingId.value ?? '__none__');
+  });
+});

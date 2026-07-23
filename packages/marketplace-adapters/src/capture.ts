@@ -67,3 +67,36 @@ export function parseFirstInt(text: string | null): number | null {
   const match = text.replace(/\./g, '').match(/\d+/);
   return match ? Number(match[0]) : null;
 }
+
+export interface ParsedQuantity {
+  /** Numeric value with scale applied ("+10 mil" -> 10000), or null. */
+  readonly value: number | null;
+  /** Original text as shown by the marketplace ("+10 mil"). */
+  readonly rawText: string | null;
+  /** The marketplace presented a grouped/bucketed value ("+", "mil", "milhão"). */
+  readonly isGrouped: boolean;
+}
+
+/**
+ * Parses a marketplace-reported sold/stock quantity, preserving honesty about
+ * grouping. The Mercado Livre page shows values like "+10 mil vendidos" — the
+ * magnitude word MUST be applied ("10 mil" = 10000, not 10) and the value must
+ * be flagged as grouped so the UI never presents it as an exact figure.
+ */
+export function parseGroupedQuantity(text: string | null): ParsedQuantity {
+  if (!text) return { value: null, rawText: null, isGrouped: false };
+  const rawText = text.trim();
+  const lower = rawText.toLowerCase();
+  const numMatch = lower.replace(/\./g, '').match(/\d+(?:,\d+)?/);
+  if (!numMatch) return { value: null, rawText, isGrouped: false };
+  const base = Number(numMatch[0].replace(',', '.'));
+  let scale = 1;
+  if (/milh(ão|ões)/.test(lower)) scale = 1_000_000;
+  else if (/\bmil\b/.test(lower)) scale = 1_000;
+  const grouped = scale > 1 || rawText.includes('+');
+  return {
+    value: Number.isFinite(base) ? Math.round(base * scale) : null,
+    rawText,
+    isGrouped: grouped,
+  };
+}

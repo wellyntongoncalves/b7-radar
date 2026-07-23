@@ -1,7 +1,5 @@
 import {
   computeContribution,
-  computeListingAgeDays,
-  estimateSales,
   FeeListingType,
   type ContributionResult,
 } from '@b7/calculations';
@@ -10,6 +8,7 @@ import {
   ConfidenceLevel,
   DataClassification,
   ListingType,
+  MetricScope,
   MetricUnit,
   type MetricValue,
   type NormalizedListing,
@@ -28,19 +27,35 @@ export interface ListingAnalysis {
 }
 
 /**
- * Composes a normalized listing and the user's cost profile into a set of
- * provenance-stamped metrics plus a margin breakdown. Every value keeps its
- * classification and confidence — nothing is presented as more certain than it
- * is, and missing inputs yield unavailable metrics rather than invented ones.
+ * Composes a normalized listing and the user's cost profile into
+ * provenance-stamped metrics bound to this listing.
+ *
+ * Compliance with the "Dados do Anúncio Atual" spec:
+ * - NO estimated sales, NO monthly sales derived from listing age.
+ * - "Vendas informadas" is shown exactly as the marketplace presents it
+ *   (grouped text preserved, flagged), never converted to false precision.
+ * - Gross revenue is CALCULATED (price × reported quantity), clearly labelled,
+ *   never presented as real historical revenue.
+ * - Every metric carries scope (listing) so it is never confused with catalog
+ *   or seller figures.
  */
 export function analyzeListing(
   listing: NormalizedListing,
   profile: CostProfileInput | null,
 ): ListingAnalysis {
   const now = listing.capturedAt;
+  const listingId = listing.externalListingId.value ?? undefined;
   const metrics: MetricValue[] = [];
-  const src = 'mercadolivre.dom';
 
+  const base = {
+    scope: MetricScope.Listing,
+    source: 'mercadolivre.dom',
+    capturedAt: now,
+    method: CaptureMethod.DomText,
+    ...(listingId ? { listingId } : {}),
+  } as const;
+
+  // Preço atual (observado, escopo: anúncio).
   const price = listing.price.value;
   metrics.push({
     key: 'current_price',
@@ -48,69 +63,54 @@ export function analyzeListing(
     unit: MetricUnit.BRL,
     classification: DataClassification.Observed,
     confidence: listing.price.confidence,
-    source: src,
-    capturedAt: now,
-    method: CaptureMethod.DomText,
     note: 'Preço atual exibido no anúncio.',
+    ...base,
     ...(price === null ? { unavailableReason: 'Preço não encontrado na página.' } : {}),
   });
 
-  // Estimated sales (clearly labelled ESTIMATED).
-  const observedSold = listing.soldQuantity.value;
-  if (observedSold !== null) {
-    const ageDays = listing.createdAt.value
-      ? computeListingAgeDays(listing.createdAt.value, now)
-      : 180; // conservative default when creation date is unavailable
-    const est = estimateSales({
-      observedSold,
-      ageDays,
-      reviewCount: listing.reviewCount.value ?? 0,
-    });
-    metrics.push({
-      key: 'estimated_sales_total',
-      value: est.estimatedTotal,
-      unit: MetricUnit.Count,
-      classification: DataClassification.Estimated,
-      confidence: ConfidenceLevel.Medium,
-      source: 'b7.model',
-      capturedAt: now,
-      method: CaptureMethod.Computed,
-      formula: 'estimated-sales',
-      formulaVersion: est.formulaVersion,
-      note: 'Estimativa baseada nas vendas observadas, idade e avaliações. Não é um valor exato.',
-    });
-    metrics.push({
-      key: 'estimated_sales_per_month',
-      value: est.perMonth,
-      unit: MetricUnit.PerMonth,
-      classification: DataClassification.Estimated,
-      confidence: ConfidenceLevel.Medium,
-      source: 'b7.model',
-      capturedAt: now,
-      method: CaptureMethod.Computed,
-      formula: 'estimated-sales',
-      formulaVersion: est.formulaVersion,
-    });
+  // Vendas informadas — exatamente como o marketplace apresenta (texto
+  // agrupado preservado). Nunca vira número exato quando é agrupado.
+  const soldValue = listing.soldQuantity.value;
+  const soldRaw = listing.soldQuantity.rawText ?? null;
+  const grouped = listing.soldQuantity.isGrouped === true;
+  metrics.push({
+    key: 'sales_reported',
+    value: soldValue,
+    unit: MetricUnit.Count,
+    classification: DataClassification.Observed,
+    confidence: soldValue === null ? ConfidenceLevel.Unavailable : ConfidenceLevel.Medium,
+    note: 'Quantidade vendida informada pelo Mercado Livre.',
+    ...base,
+    ...(soldRaw ? { rawText: soldRaw } : {}),
+    ...(grouped
+      ? {
+          isGrouped: true,
+          limitation:
+            'O Mercado Livre pode apresentar quantidades agrupadas ou arredondadas para anúncios públicos.',
+        }
+      : {}),
+    ...(soldValue === null ? { unavailableReason: 'Quantidade vendida não exibida.' } : {}),
+  });
 
-    // Estimated gross revenue = price × estimated sales (labelled ESTIMATED).
-    if (price !== null) {
-      metrics.push({
-        key: 'estimated_gross_revenue',
-        value: Math.round(price * est.estimatedTotal),
-        unit: MetricUnit.BRL,
-        classification: DataClassification.Estimated,
-        confidence: ConfidenceLevel.Medium,
-        source: 'b7.model',
-        capturedAt: now,
-        method: CaptureMethod.Computed,
-        formula: 'gross-revenue',
-        formulaVersion: est.formulaVersion,
-        note: 'Receita bruta estimada com base no preço atual e nas vendas estimadas.',
-      });
-    }
+  // Faturamento bruto CALCULADO = preço × quantidade informada. Não é receita
+  // real histórica (preço pode ter mudado, cupons, devoluções, variações).
+  if (price !== null && soldValue !== null) {
+    metrics.push({
+      key: 'gross_revenue_calc',
+      value: Math.round(price * soldValue),
+      unit: MetricUnit.BRL,
+      classification: DataClassification.Calculated,
+      confidence: grouped ? ConfidenceLevel.Low : ConfidenceLevel.Medium,
+      formula: 'gross-revenue',
+      formulaVersion: 'gross-revenue@1.0.0',
+      note: 'Faturamento bruto calculado (preço atual × vendas informadas).',
+      limitation:
+        'Não representa a receita histórica real: o preço pode ter mudado, e pode haver cupons, descontos, devoluções e variações.',
+      ...base,
+    });
   }
 
-  // Margin breakdown (CALCULATED) — only when the user configured a cost profile.
+  // Rentabilidade CALCULADA — só quando o usuário configurou custo/imposto.
   let contribution: ContributionResult | null = null;
   if (profile && price !== null) {
     contribution = computeContribution({
@@ -120,42 +120,35 @@ export function analyzeListing(
       extraCostsReais: profile.extraCostsReais ?? 0,
       listingType: profile.listingType ?? mapListingType(listing.listingType.value),
     });
+    const calc = {
+      classification: DataClassification.Calculated,
+      confidence: ConfidenceLevel.High,
+      method: CaptureMethod.Computed,
+      formula: 'contribution-margin',
+      formulaVersion: contribution.formulaVersion,
+      scope: MetricScope.Listing,
+      source: 'b7.calculations',
+      capturedAt: now,
+      ...(listingId ? { listingId } : {}),
+    } as const;
     metrics.push({
       key: 'contribution_margin',
       value: contribution.contributionMarginCents / 100,
       unit: MetricUnit.BRL,
-      classification: DataClassification.Calculated,
-      confidence: ConfidenceLevel.High,
-      source: 'b7.calculations',
-      capturedAt: now,
-      method: CaptureMethod.Computed,
-      formula: 'contribution-margin',
-      formulaVersion: contribution.formulaVersion,
-      note: 'Margem de contribuição calculada a partir do preço e dos custos configurados.',
+      note: 'Margem de contribuição a partir do preço e dos custos configurados.',
+      ...calc,
     });
     metrics.push({
       key: 'margin_percent',
       value: Math.round(contribution.marginPercent * 100) / 100,
       unit: MetricUnit.Percent,
-      classification: DataClassification.Calculated,
-      confidence: ConfidenceLevel.High,
-      source: 'b7.calculations',
-      capturedAt: now,
-      method: CaptureMethod.Computed,
-      formula: 'contribution-margin',
-      formulaVersion: contribution.formulaVersion,
+      ...calc,
     });
     metrics.push({
       key: 'roi_percent',
       value: Math.round(contribution.roiPercent * 100) / 100,
       unit: MetricUnit.Percent,
-      classification: DataClassification.Calculated,
-      confidence: ConfidenceLevel.High,
-      source: 'b7.calculations',
-      capturedAt: now,
-      method: CaptureMethod.Computed,
-      formula: 'contribution-margin',
-      formulaVersion: contribution.formulaVersion,
+      ...calc,
     });
   }
 

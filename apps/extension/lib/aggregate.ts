@@ -1,7 +1,11 @@
-import { estimateSales } from '@b7/calculations';
 import type { NormalizedListing } from '@b7/shared-types';
 
-/** Aggregated statistics over the listings currently loaded on a search page. */
+/**
+ * Aggregated statistics over the listings currently loaded on a search page.
+ * Only observed values contribute — no estimated sales/revenue (the spec
+ * forbids presenting estimates as real data). Sales totals are the reported
+ * (possibly grouped) quantities, labelled "observado na página".
+ */
 export interface SearchAggregate {
   readonly count: number;
   readonly withPrice: number;
@@ -9,9 +13,10 @@ export interface SearchAggregate {
   readonly medianPriceReais: number | null;
   readonly minPriceReais: number | null;
   readonly maxPriceReais: number | null;
-  readonly totalObservedSales: number;
-  readonly totalEstimatedSales: number;
-  readonly estimatedRevenueReais: number;
+  /** Sum of reported sold quantities across listings that expose one. */
+  readonly totalReportedSales: number;
+  /** Whether any reported quantity was grouped (e.g. "+10 mil"). */
+  readonly hasGroupedSales: boolean;
   readonly freeShippingCount: number;
 }
 
@@ -24,16 +29,10 @@ function median(values: number[]): number | null {
     : (sorted[mid] as number);
 }
 
-/**
- * Computes page-level aggregates from normalized listings. Only values actually
- * present contribute — missing prices/sales are skipped, never assumed as zero
- * in averages. Sales totals mix observed and (labelled) estimated figures.
- */
 export function aggregateSearch(listings: readonly NormalizedListing[]): SearchAggregate {
   const prices: number[] = [];
-  let totalObservedSales = 0;
-  let totalEstimatedSales = 0;
-  let estimatedRevenueCents = 0;
+  let totalReportedSales = 0;
+  let hasGroupedSales = false;
   let freeShippingCount = 0;
 
   for (const l of listings) {
@@ -42,21 +41,14 @@ export function aggregateSearch(listings: readonly NormalizedListing[]): SearchA
 
     const sold = l.soldQuantity.value;
     if (sold !== null) {
-      totalObservedSales += sold;
-      const est = estimateSales({
-        observedSold: sold,
-        ageDays: 180,
-        reviewCount: l.reviewCount.value ?? 0,
-      });
-      totalEstimatedSales += est.estimatedTotal;
-      if (price !== null) estimatedRevenueCents += Math.round(price * est.estimatedTotal * 100);
+      totalReportedSales += sold;
+      if (l.soldQuantity.isGrouped === true) hasGroupedSales = true;
     }
 
     if (l.freeShipping.value) freeShippingCount += 1;
   }
 
-  const avg =
-    prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null;
+  const avg = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null;
 
   return {
     count: listings.length,
@@ -65,9 +57,8 @@ export function aggregateSearch(listings: readonly NormalizedListing[]): SearchA
     medianPriceReais: median(prices),
     minPriceReais: prices.length ? Math.min(...prices) : null,
     maxPriceReais: prices.length ? Math.max(...prices) : null,
-    totalObservedSales,
-    totalEstimatedSales,
-    estimatedRevenueReais: Math.round(estimatedRevenueCents / 100),
+    totalReportedSales,
+    hasGroupedSales,
     freeShippingCount,
   };
 }

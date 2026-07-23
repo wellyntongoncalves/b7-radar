@@ -58,6 +58,10 @@ export interface CapturedField<T> {
   readonly source: string;
   readonly method: CaptureMethod;
   readonly capturedAt: IsoUtcTimestamp;
+  /** Raw text as shown by the marketplace (e.g. "+10 mil"), when grouped. */
+  readonly rawText?: string;
+  /** Marketplace presented a grouped/bucketed value (e.g. "+10 mil"). */
+  readonly isGrouped?: boolean;
   readonly error?: string;
 }
 
