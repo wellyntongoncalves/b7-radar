@@ -9,7 +9,7 @@ export default defineConfig({
     description: 'Inteligência de mercado por Bloco 7. Dados organizados. Decisões mais fortes.',
     // Least privilege: only local storage. Data is read from the page the user
     // is already viewing (activeTab), never from arbitrary sites.
-    permissions: ['storage', 'activeTab'],
+    permissions: ['storage', 'activeTab', 'alarms'],
     host_permissions: [
       'https://*.mercadolivre.com.br/*',
       'https://*.mercadolibre.com/*',
