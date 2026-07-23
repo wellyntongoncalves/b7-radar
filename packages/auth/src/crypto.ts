@@ -1,6 +1,7 @@
 import {
   createCipheriv,
   createDecipheriv,
+  createHash,
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
@@ -52,10 +53,13 @@ export function decryptToken(payload: string, key: Buffer): string {
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
 }
 
-/** Constant-time string comparison for secrets (e.g. OAuth state). */
+/**
+ * Constant-time string comparison for secrets (e.g. OAuth state). Hashes both
+ * inputs to a fixed 32-byte digest first, so the comparison time never depends
+ * on the secret's length (no early length-mismatch leak).
+ */
 export function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
 }

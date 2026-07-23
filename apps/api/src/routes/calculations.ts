@@ -38,7 +38,11 @@ export async function calculationRoutes(app: FastifyInstance): Promise<void> {
     if (!parsed.success) {
       return reply.status(400).send({ error: 'validation_error', issues: parsed.error.issues });
     }
-    return { result: computeContribution(parsed.data) };
+    try {
+      return { result: computeContribution(parsed.data) };
+    } catch (err) {
+      return reply.status(422).send({ error: 'invalid_input', message: (err as Error).message });
+    }
   });
 
   app.post('/v1/calculations/price-for-margin', async (request, reply) => {

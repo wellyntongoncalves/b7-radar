@@ -2,23 +2,26 @@ import {
   buildAuthorizationUrl,
   createPkcePair,
   generateState,
+  safeEqual,
   MERCADO_LIVRE_OAUTH,
 } from '@b7/auth';
 import type { FastifyInstance } from 'fastify';
 import type { Env } from '../env.js';
 
+const SESSION_COOKIE = 'b7_ml_oauth';
+const COOKIE_PATH = '/v1/auth/mercadolivre';
+const strict = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+
 /**
- * Mercado Livre OAuth scaffold (authorization-code + PKCE). The MVP wires the
- * start endpoint that redirects the user to the marketplace consent screen. The
- * callback validates state and is where the server-side token exchange (with the
- * client secret) and encrypted storage will happen. We never store the
- * marketplace password — only OAuth tokens, encrypted at rest.
+ * Mercado Livre OAuth (authorization-code + PKCE).
  *
- * PKCE verifier and state must be persisted per-session; here they are returned
- * for the caller to store securely (e.g. httpOnly cookie / session store).
+ * Security: the PKCE `verifier` and `state` are NEVER returned to the client.
+ * They are stored server-side in a signed, httpOnly cookie and validated on the
+ * callback. `/start` issues a 302 redirect to the consent screen. We never store
+ * the marketplace password — only OAuth tokens, encrypted at rest (fase 2).
  */
 export async function mercadoLivreAuthRoutes(app: FastifyInstance, env: Env): Promise<void> {
-  app.get('/v1/auth/mercadolivre/start', async (_request, reply) => {
+  app.get('/v1/auth/mercadolivre/start', strict, async (_request, reply) => {
     if (!env.ML_OAUTH_CLIENT_ID || !env.ML_OAUTH_REDIRECT_URI) {
       return reply.status(503).send({
         error: 'oauth_not_configured',
@@ -27,6 +30,16 @@ export async function mercadoLivreAuthRoutes(app: FastifyInstance, env: Env): Pr
     }
     const state = generateState();
     const pkce = createPkcePair();
+
+    reply.setCookie(SESSION_COOKIE, JSON.stringify({ state, verifier: pkce.verifier }), {
+      signed: true,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: env.NODE_ENV === 'production',
+      path: COOKIE_PATH,
+      maxAge: 600, // 10 minutes
+    });
+
     const authorizationUrl = buildAuthorizationUrl(
       {
         clientId: env.ML_OAUTH_CLIENT_ID,
@@ -35,20 +48,36 @@ export async function mercadoLivreAuthRoutes(app: FastifyInstance, env: Env): Pr
       },
       { state, codeChallenge: pkce.challenge },
     );
-    // Caller stores {state, verifier} securely and redirects the user.
-    return { authorizationUrl, state, codeVerifier: pkce.verifier };
+    return reply.redirect(authorizationUrl);
   });
 
-  app.get('/v1/auth/mercadolivre/callback', async (request, reply) => {
+  app.get('/v1/auth/mercadolivre/callback', strict, async (request, reply) => {
     const query = request.query as { code?: string; state?: string };
     if (!query.code || !query.state) {
       return reply.status(400).send({ error: 'missing_code_or_state' });
     }
-    // Token exchange with ML_OAUTH_CLIENT_SECRET + encrypted persistence lands
-    // here in the next phase (validate state against the stored value first).
+
+    const raw = request.cookies[SESSION_COOKIE];
+    const unsigned = raw ? request.unsignCookie(raw) : null;
+    if (!unsigned || !unsigned.valid || !unsigned.value) {
+      return reply.status(400).send({ error: 'missing_oauth_session' });
+    }
+    let session: { state?: string; verifier?: string };
+    try {
+      session = JSON.parse(unsigned.value);
+    } catch {
+      return reply.status(400).send({ error: 'invalid_oauth_session' });
+    }
+    if (!session.state || !safeEqual(session.state, query.state)) {
+      return reply.status(400).send({ error: 'state_mismatch' });
+    }
+
+    // State validated. The token exchange (with ML_OAUTH_CLIENT_SECRET + the
+    // stored verifier) and encrypted persistence land here in fase 2.
+    reply.clearCookie(SESSION_COOKIE, { path: COOKIE_PATH });
     return reply.status(501).send({
       error: 'not_implemented',
-      message: 'Troca de token e persistência criptografada serão implementadas na fase 2.',
+      message: 'State validado. A troca de token e a persistência criptografada entram na fase 2.',
     });
   });
 }
