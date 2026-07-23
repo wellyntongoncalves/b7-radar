@@ -3,9 +3,10 @@ import {
   type PageContext,
 } from '@b7/marketplace-adapters';
 import { PageKind } from '@b7/shared-types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Panel } from '../components/Panel.js';
+import { listingIdFromUrl, onUrlChange } from '../lib/spa.js';
 import './style.css';
 
 const adapter = new MercadoLivreDomAdapter();
@@ -37,14 +38,25 @@ export default defineContentScript({
 });
 
 function Mount() {
-  const [closed, setClosed] = useState(false);
-  if (closed) return null;
+  const [url, setUrl] = useState(location.href);
+  const [closedFor, setClosedFor] = useState<string | null>(null);
+
+  // Re-bind to the new listing whenever the SPA navigates. Keying <Panel> by
+  // listingId forces a full remount, clearing the previous listing's data.
+  useEffect(() => onUrlChange(setUrl), []);
+
+  if (adapter.identifyPage(url) !== PageKind.Product) return null;
+
+  const listingId = listingIdFromUrl(url);
+  if (closedFor === listingId) return null;
 
   const ctx: PageContext = {
-    url: location.href,
+    url,
     root: document as unknown as PageContext['root'],
     nowIso: new Date().toISOString(),
   };
   const listing = adapter.extractListing(ctx);
-  return <Panel listing={listing} onClose={() => setClosed(true)} />;
+  return (
+    <Panel key={listingId ?? url} listing={listing} onClose={() => setClosedFor(listingId)} />
+  );
 }
