@@ -1,16 +1,25 @@
 import { formatBRL } from '@b7/calculations';
 import type { NormalizedListing } from '@b7/shared-types';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { aggregateSearch } from '../lib/aggregate.js';
 
 function brl(reais: number | null): string {
   return reais === null ? '—' : formatBRL(Math.round(reais * 100));
 }
 
+/** Top listings by reported sales — observed data, honest ordering. */
+function topByReportedSales(listings: NormalizedListing[], n = 5): NormalizedListing[] {
+  return [...listings]
+    .filter((l) => l.soldQuantity.value !== null)
+    .sort((a, b) => (b.soldQuantity.value ?? 0) - (a.soldQuantity.value ?? 0))
+    .slice(0, n);
+}
+
 /** Aggregated B7 Radar summary for a search results page. */
 export function SearchSidebar({ listings }: { listings: NormalizedListing[] }) {
   const [collapsed, setCollapsed] = useState(false);
   const agg = aggregateSearch(listings);
+  const top = useMemo(() => topByReportedSales(listings), [listings]);
 
   return (
     <div className="b7-panel b7-panel--search" data-collapsed={collapsed}>
@@ -45,10 +54,28 @@ export function SearchSidebar({ listings }: { listings: NormalizedListing[] }) {
             />
             <Stat label="Com frete grátis" value={`${agg.freeShippingCount}/${agg.count}`} />
           </div>
+          {top.length > 0 && (
+            <div className="b7-rank">
+              <div className="b7-rank__title">
+                Mais vendidos (informado) <span className="b7-chip b7-chip--obs">Observado</span>
+              </div>
+              <ol className="b7-rank__list">
+                {top.map((l) => (
+                  <li key={l.externalListingId.value ?? l.url}>
+                    <span className="b7-rank__name">{l.title.value ?? 'Anúncio'}</span>
+                    <span className="b7-rank__sales">
+                      {l.soldQuantity.rawText ?? l.soldQuantity.value?.toLocaleString('pt-BR')}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
           <p className="b7-disclaimer">
-            Somatórios e médias são calculados sobre os anúncios carregados nesta página, a partir
-            das quantidades informadas pelo Mercado Livre (que podem ser agrupadas). Não são
-            estimativas de vendas.
+            Somatórios, médias e o ranking são calculados sobre os anúncios carregados nesta
+            página, a partir das quantidades informadas pelo Mercado Livre (que podem ser
+            agrupadas). Não são estimativas de vendas.
           </p>
         </div>
       )}
