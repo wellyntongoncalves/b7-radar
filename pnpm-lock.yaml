@@ -166,6 +166,15 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
 
+  packages/domain:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@20.19.43)
+
   packages/marketplace-adapters:
     dependencies:
       '@b7/shared-types':
