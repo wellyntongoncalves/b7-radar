@@ -5,6 +5,7 @@ import {
 import { PageKind } from '@b7/shared-types';
 import { useEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { ErrorBoundary } from '../components/ErrorBoundary.js';
 import { Panel } from '../components/Panel.js';
 import { cacheListing } from '../lib/messages.js';
 import { listingIdFromUrl, onUrlChange } from '../lib/spa.js';
@@ -60,6 +61,8 @@ function Mount() {
   // Best-effort: cache this listing (isolated by listingId) in the background.
   cacheListing(listing);
   return (
-    <Panel key={listingId ?? url} listing={listing} onClose={() => setClosedFor(listingId)} />
+    <ErrorBoundary key={listingId ?? url}>
+      <Panel listing={listing} onClose={() => setClosedFor(listingId)} />
+    </ErrorBoundary>
   );
 }

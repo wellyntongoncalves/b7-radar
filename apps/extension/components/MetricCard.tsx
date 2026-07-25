@@ -1,5 +1,12 @@
-import { DataClassification, METRIC_SCOPE_LABEL, type MetricValue } from '@b7/shared-types';
-import { classificationLabel, formatMetricValue, relativeTime } from '../lib/format.js';
+import { ConfidenceLevel, DataClassification, METRIC_SCOPE_LABEL, type MetricValue } from '@b7/shared-types';
+import { classificationLabel, confidenceLabel, formatMetricValue, relativeTime } from '../lib/format.js';
+
+const confClass: Record<ConfidenceLevel, string> = {
+  [ConfidenceLevel.High]: 'b7-conf--high',
+  [ConfidenceLevel.Medium]: 'b7-conf--medium',
+  [ConfidenceLevel.Low]: 'b7-conf--low',
+  [ConfidenceLevel.Unavailable]: 'b7-conf--na',
+};
 
 const classChipClass: Record<DataClassification, string> = {
   [DataClassification.Official]: 'b7-chip--ofi',
@@ -36,6 +43,9 @@ export function MetricCard({ metric }: { metric: MetricValue }) {
           {classificationLabel(metric)}
         </span>
         <span className="b7-chip b7-chip--muted">{scopeLabel}</span>
+        <span className={`b7-conf ${confClass[metric.confidence]}`}>
+          <i aria-hidden /> conf.: {confidenceLabel(metric)}
+        </span>
       </div>
       <div className="b7-metric__meta">
         <span>Fonte: {sourceLabel}</span>
