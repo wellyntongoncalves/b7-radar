@@ -1,4 +1,5 @@
 import {
+  LISTING_TYPE_LABEL,
   LOGISTICS_TYPE_LABEL,
   type CapturedField,
   type MetricValue,
@@ -129,23 +130,30 @@ export function Panel({ listing, onClose }: PanelProps) {
             )}
 
             {tab === 'vendas' && (
-              <FieldRow
-                label="Vendas observadas no período"
-                value={null}
-                unavailableReason="Requer histórico de snapshots ou dados da sua conta autorizada."
-                scope="deste anúncio"
-              />
+              <>
+                <ListingField label="Avaliação média" field={listing.rating} scope="deste anúncio" />
+                <ListingField label="Nº de avaliações" field={listing.reviewCount} scope="deste anúncio" />
+                <FieldRow
+                  label="Vendas observadas no período"
+                  value={null}
+                  unavailableReason="Requer histórico de snapshots ou dados da sua conta autorizada."
+                  scope="deste anúncio"
+                />
+              </>
             )}
 
             {tab === 'preco' && (
               <>
                 <ListingField label="Preço original" field={listing.originalPrice} money scope="deste anúncio" />
+                <EnumField label="Tipo de anúncio" field={listing.listingType} labels={LISTING_TYPE_LABEL} scope="deste anúncio" />
+                <ListingField label="Estoque disponível" field={listing.availableQuantity} scope="deste anúncio" />
               </>
             )}
 
             {tab === 'vendedor' && (
               <>
                 <ListingField label="Vendedor" field={listing.seller.publicName} scope="do vendedor" />
+                <ListingField label="ID do vendedor" field={listing.seller.externalSellerId} scope="do vendedor" />
                 <ListingField label="Reputação" field={listing.seller.reputation} scope="do vendedor" />
                 <ListingField label="Localização" field={listing.seller.location} scope="do vendedor" />
                 <BoolField label="Loja oficial" field={listing.seller.officialStore} scope="do vendedor" />
