@@ -8,9 +8,11 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { analyzeListing, type CostProfileInput } from '../lib/analyze.js';
 import { formatBRL } from '@b7/calculations';
+import { AlertOperator, evaluateAlert } from '@b7/domain';
 import { isStale, relativeTime } from '../lib/format.js';
 import { storage, type PriceSnapshot, type SavedListing } from '../lib/storage.js';
 import { summarizePriceHistory } from '../lib/history.js';
+import { notifyPriceChange } from '../lib/messages.js';
 import { MetricCard } from './MetricCard.js';
 
 interface PanelProps {
@@ -53,14 +55,38 @@ export function Panel({ listing, onClose }: PanelProps) {
 
   useEffect(() => {
     storage.getCostProfile().then(setProfile);
-    storage.getFavorites().then((f) => setSaved(f.some((l) => l.externalListingId === listingId)));
-    if (listingId && listing.price.value !== null) {
-      storage
-        .recordSnapshot(listingId, { priceReais: listing.price.value, capturedAt: listing.capturedAt })
-        .then(setSnapshots);
-    } else if (listingId) {
+    if (!listingId) return;
+    const price = listing.price.value;
+    if (price === null) {
       storage.getSnapshots(listingId).then(setSnapshots);
+      storage.getFavorites().then((f) => setSaved(f.some((l) => l.externalListingId === listingId)));
+      return;
     }
+    Promise.all([
+      storage.recordSnapshot(listingId, { priceReais: price, capturedAt: listing.capturedAt }),
+      storage.getFavorites(),
+    ]).then(([rec, favs]) => {
+      setSnapshots(rec.snapshots);
+      const isFav = favs.some((l) => l.externalListingId === listingId);
+      setSaved(isFav);
+      // Alert only for monitored listings, on a real price change vs the last reading.
+      if (isFav && rec.changed && rec.previousReais !== null) {
+        const ctx = { current: price, previous: rec.previousReais };
+        const down = evaluateAlert({ metric: 'price', operator: AlertOperator.Decreased }, ctx);
+        const up = evaluateAlert({ metric: 'price', operator: AlertOperator.Increased }, ctx);
+        if (down || up) {
+          notifyPriceChange({
+            type: 'b7:alert:price',
+            listingId,
+            title: listing.title.value ?? 'Anúncio',
+            url: listing.url,
+            direction: down ? 'down' : 'up',
+            previousReais: rec.previousReais,
+            currentReais: price,
+          });
+        }
+      }
+    });
   }, [listingId, listing.price.value, listing.capturedAt]);
 
   const history = useMemo(() => summarizePriceHistory(snapshots), [snapshots]);

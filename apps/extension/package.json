@@ -15,6 +15,7 @@
   "dependencies": {
     "@b7/brand": "workspace:*",
     "@b7/calculations": "workspace:*",
+    "@b7/domain": "workspace:*",
     "@b7/marketplace-adapters": "workspace:*",
     "@b7/shared-types": "workspace:*",
     "react": "^18.3.1",

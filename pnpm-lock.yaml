@@ -87,6 +87,9 @@ importers:
       '@b7/calculations':
         specifier: workspace:*
         version: link:../../packages/calculations
+      '@b7/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@b7/marketplace-adapters':
         specifier: workspace:*
         version: link:../../packages/marketplace-adapters

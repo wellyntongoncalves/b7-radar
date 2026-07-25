@@ -65,16 +65,24 @@ export const storage = {
   /**
    * Records a real price reading. Skips duplicates (same price as the last
    * snapshot) so history reflects actual changes, never repeated visits.
+   * `changed` is true only when a new, different price was appended.
    */
-  async recordSnapshot(listingId: string, snap: PriceSnapshot): Promise<PriceSnapshot[]> {
-    if (!listingId || !Number.isFinite(snap.priceReais)) return [];
+  async recordSnapshot(
+    listingId: string,
+    snap: PriceSnapshot,
+  ): Promise<{ snapshots: PriceSnapshot[]; changed: boolean; previousReais: number | null }> {
+    if (!listingId || !Number.isFinite(snap.priceReais)) {
+      return { snapshots: [], changed: false, previousReais: null };
+    }
     const all = await get<Record<string, PriceSnapshot[]>>(KEYS.snapshots, {});
     const list = all[listingId] ?? [];
     const last = list[list.length - 1];
-    if (last && last.priceReais === snap.priceReais) return list;
+    if (last && last.priceReais === snap.priceReais) {
+      return { snapshots: list, changed: false, previousReais: last.priceReais };
+    }
     const next = [...list, snap].slice(-MAX_SNAPSHOTS);
     all[listingId] = next;
     await set(KEYS.snapshots, all);
-    return next;
+    return { snapshots: next, changed: true, previousReais: last ? last.priceReais : null };
   },
 };

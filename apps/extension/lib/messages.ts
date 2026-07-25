@@ -4,10 +4,28 @@ import type { NormalizedListing } from '@b7/shared-types';
 export type B7Message =
   | { type: 'b7:cache:set'; listingId: string; variationId?: string; value: NormalizedListing }
   | { type: 'b7:cache:get'; listingId: string; variationId?: string }
-  | { type: 'b7:cache:delete'; listingId: string; variationId?: string };
+  | { type: 'b7:cache:delete'; listingId: string; variationId?: string }
+  | {
+      type: 'b7:alert:price';
+      listingId: string;
+      title: string;
+      url: string;
+      direction: 'up' | 'down';
+      previousReais: number;
+      currentReais: number;
+    };
 
 export interface CacheGetResponse {
   readonly value: NormalizedListing | null;
+}
+
+/** Fire-and-forget price-change alert; the background raises a notification. */
+export function notifyPriceChange(msg: Extract<B7Message, { type: 'b7:alert:price' }>): void {
+  try {
+    void chrome.runtime.sendMessage(msg);
+  } catch {
+    // Background may be asleep; alerts are best-effort.
+  }
 }
 
 /** Fire-and-forget cache write for a listing (isolated by listingId). */
