@@ -106,12 +106,36 @@ select {
   gap: 8px;
   align-items: center;
 }
+.b7-fav-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .b7-fav-list a {
   color: var(--b7-blue);
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.b7-fav-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--b7-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.b7-delta {
+  font-weight: 600;
+}
+.b7-delta--up {
+  color: var(--b7-violet);
+}
+.b7-delta--down {
+  color: var(--b7-success);
 }
 
 .b7-muted {
