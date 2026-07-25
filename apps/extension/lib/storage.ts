@@ -9,6 +9,7 @@ const KEYS = {
   favorites: 'b7.favorites',
   theme: 'b7.theme',
   snapshots: 'b7.snapshots',
+  priceRules: 'b7.priceRules',
 } as const;
 
 const MAX_SNAPSHOTS = 60;
@@ -25,6 +26,11 @@ export interface SavedListing {
 export interface PriceSnapshot {
   readonly priceReais: number;
   readonly capturedAt: string;
+}
+
+/** User-configured price target for a listing: alert when it drops to/below. */
+export interface PriceRule {
+  readonly targetBelowReais: number;
 }
 
 async function get<T>(key: string, fallback: T): Promise<T> {
@@ -84,5 +90,19 @@ export const storage = {
     all[listingId] = next;
     await set(KEYS.snapshots, all);
     return { snapshots: next, changed: true, previousReais: last ? last.priceReais : null };
+  },
+
+  async getPriceRule(listingId: string): Promise<PriceRule | null> {
+    const all = await get<Record<string, PriceRule>>(KEYS.priceRules, {});
+    return all[listingId] ?? null;
+  },
+  async setPriceRule(listingId: string, rule: PriceRule | null): Promise<void> {
+    const all = await get<Record<string, PriceRule>>(KEYS.priceRules, {});
+    if (rule === null || !Number.isFinite(rule.targetBelowReais) || rule.targetBelowReais <= 0) {
+      delete all[listingId];
+    } else {
+      all[listingId] = rule;
+    }
+    await set(KEYS.priceRules, all);
   },
 };

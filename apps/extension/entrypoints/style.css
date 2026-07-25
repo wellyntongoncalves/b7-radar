@@ -358,6 +358,33 @@
   cursor: default;
 }
 
+.b7-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+  font-size: 12px;
+}
+.b7-rule-input {
+  width: 88px;
+  padding: 5px 7px;
+  border: 1px solid var(--b7-border);
+  border-radius: 6px;
+  background: var(--b7-surface);
+  color: var(--b7-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.b7-rule-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.b7-rule-actions .b7-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .b7-hint,
 .b7-disclaimer {
   font-size: 11px;

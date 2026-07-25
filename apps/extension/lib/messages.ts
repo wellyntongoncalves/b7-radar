@@ -13,14 +13,24 @@ export type B7Message =
       direction: 'up' | 'down';
       previousReais: number;
       currentReais: number;
+    }
+  | {
+      type: 'b7:alert:target';
+      listingId: string;
+      title: string;
+      url: string;
+      targetReais: number;
+      currentReais: number;
     };
 
 export interface CacheGetResponse {
   readonly value: NormalizedListing | null;
 }
 
-/** Fire-and-forget price-change alert; the background raises a notification. */
-export function notifyPriceChange(msg: Extract<B7Message, { type: 'b7:alert:price' }>): void {
+/** Fire-and-forget alert (price change or target hit); background notifies. */
+export function notifyAlert(
+  msg: Extract<B7Message, { type: 'b7:alert:price' | 'b7:alert:target' }>,
+): void {
   try {
     void chrome.runtime.sendMessage(msg);
   } catch {

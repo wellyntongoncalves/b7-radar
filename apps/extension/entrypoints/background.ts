@@ -24,17 +24,27 @@ export default defineBackground(() => {
       case 'b7:cache:delete':
         cache.delete(message.listingId, message.variationId);
         return false;
-      case 'b7:alert:price': {
+      case 'b7:alert:price':
+      case 'b7:alert:target': {
         const brl = (r: number) =>
           new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(r);
-        const arrow = message.direction === 'down' ? 'caiu' : 'subiu';
-        const notifId = `b7-price-${message.listingId}`;
+        const notifId = `b7-${message.type === 'b7:alert:target' ? 'target' : 'price'}-${message.listingId}`;
         alertUrls.set(notifId, message.url);
+        const [title, body] =
+          message.type === 'b7:alert:target'
+            ? [
+                'B7 Radar — preço-alvo atingido',
+                `${message.title}\nAgora ${brl(message.currentReais)} (alvo ≤ ${brl(message.targetReais)})`,
+              ]
+            : [
+                `B7 Radar — preço ${message.direction === 'down' ? 'caiu' : 'subiu'}`,
+                `${message.title}\n${brl(message.previousReais)} → ${brl(message.currentReais)}`,
+              ];
         chrome.notifications?.create(notifId, {
           type: 'basic',
           iconUrl: chrome.runtime.getURL('icon/128.png'),
-          title: `B7 Radar — preço ${arrow}`,
-          message: `${message.title}\n${brl(message.previousReais)} → ${brl(message.currentReais)}`,
+          title,
+          message: body,
         });
         return false;
       }

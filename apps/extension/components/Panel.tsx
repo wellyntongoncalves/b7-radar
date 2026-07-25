@@ -10,9 +10,9 @@ import { analyzeListing, type CostProfileInput } from '../lib/analyze.js';
 import { formatBRL } from '@b7/calculations';
 import { AlertOperator, evaluateAlert } from '@b7/domain';
 import { isStale, relativeTime } from '../lib/format.js';
-import { storage, type PriceSnapshot, type SavedListing } from '../lib/storage.js';
+import { storage, type PriceRule, type PriceSnapshot, type SavedListing } from '../lib/storage.js';
 import { summarizePriceHistory } from '../lib/history.js';
-import { notifyPriceChange } from '../lib/messages.js';
+import { notifyAlert } from '../lib/messages.js';
 import { MetricCard } from './MetricCard.js';
 
 interface PanelProps {
@@ -49,6 +49,7 @@ export function Panel({ listing, onClose }: PanelProps) {
   const [profile, setProfile] = useState<CostProfileInput | null>(null);
   const [saved, setSaved] = useState(false);
   const [snapshots, setSnapshots] = useState<PriceSnapshot[]>([]);
+  const [rule, setRule] = useState<PriceRule | null>(null);
 
   const listingId = listing.externalListingId.value;
   const stale = isStale(listing.capturedAt);
@@ -56,6 +57,7 @@ export function Panel({ listing, onClose }: PanelProps) {
   useEffect(() => {
     storage.getCostProfile().then(setProfile);
     if (!listingId) return;
+    storage.getPriceRule(listingId).then(setRule);
     const price = listing.price.value;
     if (price === null) {
       storage.getSnapshots(listingId).then(setSnapshots);
@@ -65,20 +67,41 @@ export function Panel({ listing, onClose }: PanelProps) {
     Promise.all([
       storage.recordSnapshot(listingId, { priceReais: price, capturedAt: listing.capturedAt }),
       storage.getFavorites(),
-    ]).then(([rec, favs]) => {
+      storage.getPriceRule(listingId),
+    ]).then(([rec, favs, priceRule]) => {
       setSnapshots(rec.snapshots);
       const isFav = favs.some((l) => l.externalListingId === listingId);
       setSaved(isFav);
-      // Alert only for monitored listings, on a real price change vs the last reading.
+      const title = listing.title.value ?? 'Anúncio';
+      // Target-price alert: fires when the price crosses to/below the target.
+      if (priceRule && rec.changed) {
+        const ctx = { current: price, previous: rec.previousReais };
+        const hit = evaluateAlert(
+          { metric: 'price', operator: AlertOperator.LessOrEqual, threshold: priceRule.targetBelowReais },
+          ctx,
+        );
+        const wasAbove = rec.previousReais === null || rec.previousReais > priceRule.targetBelowReais;
+        if (hit && wasAbove) {
+          notifyAlert({
+            type: 'b7:alert:target',
+            listingId,
+            title,
+            url: listing.url,
+            targetReais: priceRule.targetBelowReais,
+            currentReais: price,
+          });
+        }
+      }
+      // Generic change alert for monitored listings (real change vs last reading).
       if (isFav && rec.changed && rec.previousReais !== null) {
         const ctx = { current: price, previous: rec.previousReais };
         const down = evaluateAlert({ metric: 'price', operator: AlertOperator.Decreased }, ctx);
         const up = evaluateAlert({ metric: 'price', operator: AlertOperator.Increased }, ctx);
         if (down || up) {
-          notifyPriceChange({
+          notifyAlert({
             type: 'b7:alert:price',
             listingId,
-            title: listing.title.value ?? 'Anúncio',
+            title,
             url: listing.url,
             direction: down ? 'down' : 'up',
             previousReais: rec.previousReais,
@@ -184,6 +207,12 @@ export function Panel({ listing, onClose }: PanelProps) {
                 <ListingField label="Preço original" field={listing.originalPrice} money scope="deste anúncio" />
                 <EnumField label="Tipo de anúncio" field={listing.listingType} labels={LISTING_TYPE_LABEL} scope="deste anúncio" />
                 <ListingField label="Estoque disponível" field={listing.availableQuantity} scope="deste anúncio" />
+                <PriceRuleForm
+                  rule={rule}
+                  onSave={(r) => {
+                    if (listingId) void storage.setPriceRule(listingId, r).then(() => setRule(r));
+                  }}
+                />
               </>
             )}
 
@@ -259,6 +288,48 @@ function MetricGrid({ metrics }: { metrics: MetricValue[] }) {
 
 function pick(byKey: Map<string, MetricValue>, keys: string[]): MetricValue[] {
   return keys.map((k) => byKey.get(k)).filter((m): m is MetricValue => m !== undefined);
+}
+
+function PriceRuleForm({
+  rule,
+  onSave,
+}: {
+  rule: PriceRule | null;
+  onSave: (rule: PriceRule | null) => void;
+}) {
+  const [target, setTarget] = useState('');
+  useEffect(() => setTarget(rule ? String(rule.targetBelowReais) : ''), [rule]);
+  const parsed = Number(target.replace(',', '.'));
+  const valid = Number.isFinite(parsed) && parsed > 0;
+  return (
+    <div className="b7-metric">
+      <div className="b7-metric__label">Alerta de preço-alvo</div>
+      <div className="b7-rule-row">
+        <span>Avisar se cair a ≤ R$</span>
+        <input
+          className="b7-rule-input"
+          inputMode="decimal"
+          value={target}
+          placeholder="0,00"
+          aria-label="Preço-alvo em reais"
+          onChange={(e) => setTarget(e.target.value)}
+        />
+      </div>
+      <div className="b7-rule-actions">
+        <button className="b7-btn b7-btn--primary" disabled={!valid} onClick={() => onSave({ targetBelowReais: parsed })}>
+          {rule ? 'Atualizar alerta' : 'Criar alerta'}
+        </button>
+        {rule && (
+          <button className="b7-icon-btn" onClick={() => onSave(null)} title="Remover alerta">
+            Remover
+          </button>
+        )}
+      </div>
+      <div className="b7-metric__note">
+        Notifica quando uma leitura real deste anúncio atingir o alvo. Precisa da extensão aberta na página.
+      </div>
+    </div>
+  );
 }
 
 function PriceHistory({
