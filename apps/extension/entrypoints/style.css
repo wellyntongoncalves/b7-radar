@@ -30,6 +30,26 @@
   width: 300px;
 }
 
+/* Compact density: tighter padding, gaps and type for power users. */
+.b7-panel[data-compact='true'] .b7-panel__body {
+  padding: 8px;
+  gap: 6px;
+}
+.b7-panel[data-compact='true'] .b7-metrics-grid {
+  gap: 6px;
+}
+.b7-panel[data-compact='true'] .b7-metric {
+  padding: 6px;
+}
+.b7-panel[data-compact='true'] .b7-metric__value {
+  font-size: 14px;
+  margin: 1px 0 3px;
+}
+.b7-panel[data-compact='true'] .b7-metric__meta,
+.b7-panel[data-compact='true'] .b7-metric__note {
+  display: none;
+}
+
 .b7-panel__header {
   display: flex;
   align-items: center;

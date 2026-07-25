@@ -40,6 +40,7 @@ const TAB_METRICS: Record<Tab, string[]> = {
 /** Painel de análise do anúncio, com abas — reflete os mockups B7 Radar. */
 export function Panel({ listing, onClose }: PanelProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [compact, setCompact] = useState(false);
   const [tab, setTab] = useState<Tab>('visao');
   const [profile, setProfile] = useState<CostProfileInput | null>(null);
   const [saved, setSaved] = useState(false);
@@ -66,7 +67,13 @@ export function Panel({ listing, onClose }: PanelProps) {
   }
 
   return (
-    <section className="b7-panel" data-collapsed={collapsed} role="complementary" aria-label="Painel B7 Radar">
+    <section
+      className="b7-panel"
+      data-collapsed={collapsed}
+      data-compact={compact}
+      role="complementary"
+      aria-label="Painel B7 Radar"
+    >
       <header className="b7-panel__header">
         <div className="b7-panel__brand">
           <span className="b7-logo" aria-hidden />
@@ -79,6 +86,15 @@ export function Panel({ listing, onClose }: PanelProps) {
           </div>
         </div>
         <div className="b7-panel__actions">
+          <button
+            className="b7-icon-btn"
+            onClick={() => setCompact((c) => !c)}
+            aria-label={compact ? 'Modo confortável' : 'Modo compacto'}
+            aria-pressed={compact}
+            title={compact ? 'Modo confortável' : 'Modo compacto'}
+          >
+            {compact ? '▤' : '▥'}
+          </button>
           <button className="b7-icon-btn" onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? 'Expandir painel' : 'Minimizar painel'} aria-expanded={!collapsed}>
             {collapsed ? '▸' : '▾'}
           </button>
