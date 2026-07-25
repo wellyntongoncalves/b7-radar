@@ -105,6 +105,18 @@
   color: var(--b7-text-muted);
   margin-top: 2px;
 }
+.b7-stale {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #b54708;
+  background: rgba(247, 144, 9, 0.14);
+}
+[data-theme='dark'] .b7-stale {
+  color: #fdb022;
+}
 
 .b7-tabs {
   display: flex;

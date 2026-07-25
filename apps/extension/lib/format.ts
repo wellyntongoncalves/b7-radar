@@ -37,6 +37,11 @@ export function confidenceLabel(m: MetricValue): string {
   return CONFIDENCE_LABEL[m.confidence];
 }
 
+/** Whether a captured timestamp is older than `maxAgeMin` (default 30 min). */
+export function isStale(iso: string, maxAgeMin = 30, nowMs = Date.now()): boolean {
+  return nowMs - Date.parse(iso) > maxAgeMin * 60000;
+}
+
 /** "há 5 minutos" style relative time in pt-BR from an ISO timestamp. */
 export function relativeTime(iso: string, nowMs = Date.now()): string {
   const diffMs = nowMs - Date.parse(iso);

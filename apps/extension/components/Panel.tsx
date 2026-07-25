@@ -7,7 +7,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { analyzeListing, type CostProfileInput } from '../lib/analyze.js';
 import { formatBRL } from '@b7/calculations';
-import { relativeTime } from '../lib/format.js';
+import { isStale, relativeTime } from '../lib/format.js';
 import { storage, type SavedListing } from '../lib/storage.js';
 import { MetricCard } from './MetricCard.js';
 
@@ -46,6 +46,7 @@ export function Panel({ listing, onClose }: PanelProps) {
   const [saved, setSaved] = useState(false);
 
   const listingId = listing.externalListingId.value;
+  const stale = isStale(listing.capturedAt);
 
   useEffect(() => {
     storage.getCostProfile().then(setProfile);
@@ -82,6 +83,11 @@ export function Panel({ listing, onClose }: PanelProps) {
             <div className="b7-panel__sub">{truncate(listing.title.value ?? 'Anúncio', 40)}</div>
             <div className="b7-panel__id">
               ID: {listingId ?? '—'} · atualizado {relativeTime(listing.capturedAt)}
+              {stale && (
+                <span className="b7-stale" title="Recarregue a página para capturar dados atuais.">
+                  Desatualizado
+                </span>
+              )}
             </div>
           </div>
         </div>
