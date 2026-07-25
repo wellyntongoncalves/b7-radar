@@ -51,8 +51,6 @@ a {
 .b7-logo {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
-  background: var(--b7-gradient);
   flex-shrink: 0;
 }
 
@@ -200,4 +198,53 @@ select {
   font-size: 11px;
   color: var(--b7-text-muted);
   margin-top: 16px;
+}
+
+/* ── Responsividade ─────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .b7-shell {
+    grid-template-columns: 1fr;
+  }
+  .b7-sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--b7-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+  }
+  .b7-sidebar__brand {
+    padding: 4px 8px;
+  }
+  .b7-nav-group {
+    margin-bottom: 0;
+  }
+  .b7-nav-group__title {
+    display: none;
+  }
+  .b7-nav-group {
+    display: flex;
+    gap: 4px;
+  }
+  .b7-nav-link {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  .b7-grid--2 {
+    grid-template-columns: 1fr;
+  }
+  .b7-main {
+    padding: 18px 16px;
+  }
+}
+
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--b7-blue);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
