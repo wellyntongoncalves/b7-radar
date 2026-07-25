@@ -1,7 +1,11 @@
 import {
   buildAuthorizationUrl,
   createPkcePair,
+  encryptToken,
+  exchangeCodeForToken,
   generateState,
+  loadKey,
+  OAuthExchangeError,
   safeEqual,
   MERCADO_LIVRE_OAUTH,
 } from '@b7/auth';
@@ -11,6 +15,20 @@ import type { Env } from '../env.js';
 const SESSION_COOKIE = 'b7_ml_oauth';
 const COOKIE_PATH = '/v1/auth/mercadolivre';
 const strict = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+
+/** Encrypted connection record. In-memory for the MVP; persisted to the
+ * `marketplace_connections` table once the DB is connected. */
+export interface StoredConnection {
+  readonly externalUserId: string | null;
+  readonly encryptedAccessToken: string;
+  readonly encryptedRefreshToken: string | null;
+  readonly expiresAt: string;
+  readonly scope: string | null;
+}
+const connections = new Map<string, StoredConnection>();
+export function getStoredConnection(userId: string): StoredConnection | undefined {
+  return connections.get(userId);
+}
 
 /**
  * Mercado Livre OAuth (authorization-code + PKCE).
@@ -71,13 +89,41 @@ export async function mercadoLivreAuthRoutes(app: FastifyInstance, env: Env): Pr
     if (!session.state || !safeEqual(session.state, query.state)) {
       return reply.status(400).send({ error: 'state_mismatch' });
     }
-
-    // State validated. The token exchange (with ML_OAUTH_CLIENT_SECRET + the
-    // stored verifier) and encrypted persistence land here in fase 2.
     reply.clearCookie(SESSION_COOKIE, { path: COOKIE_PATH });
-    return reply.status(501).send({
-      error: 'not_implemented',
-      message: 'State validado. A troca de token e a persistência criptografada entram na fase 2.',
-    });
+
+    if (!env.ML_OAUTH_CLIENT_ID || !env.ML_OAUTH_CLIENT_SECRET || !env.ML_OAUTH_REDIRECT_URI || !env.TOKEN_ENCRYPTION_KEY) {
+      return reply.status(503).send({ error: 'oauth_not_configured' });
+    }
+    if (!session.verifier) {
+      return reply.status(400).send({ error: 'missing_verifier' });
+    }
+
+    try {
+      const tokens = await exchangeCodeForToken(
+        {
+          clientId: env.ML_OAUTH_CLIENT_ID,
+          clientSecret: env.ML_OAUTH_CLIENT_SECRET,
+          redirectUri: env.ML_OAUTH_REDIRECT_URI,
+          ...MERCADO_LIVRE_OAUTH,
+        },
+        { code: query.code, codeVerifier: session.verifier },
+      );
+
+      // Encrypt tokens at rest. Never returned to the client, never logged.
+      const key = loadKey(env.TOKEN_ENCRYPTION_KEY);
+      const record: StoredConnection = {
+        externalUserId: tokens.externalUserId,
+        encryptedAccessToken: encryptToken(tokens.accessToken, key),
+        encryptedRefreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken, key) : null,
+        expiresAt: new Date(Date.now() + tokens.expiresInSeconds * 1000).toISOString(),
+        scope: tokens.scope,
+      };
+      connections.set(tokens.externalUserId ?? 'unknown', record);
+
+      return reply.send({ connected: true, externalUserId: tokens.externalUserId });
+    } catch (err) {
+      const status = err instanceof OAuthExchangeError ? 502 : 500;
+      return reply.status(status).send({ error: 'token_exchange_failed' });
+    }
   });
 }

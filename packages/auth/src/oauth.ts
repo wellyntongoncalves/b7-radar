@@ -53,3 +53,74 @@ export function buildAuthorizationUrl(
   url.searchParams.set('code_challenge_method', 'S256');
   return url.toString();
 }
+
+export interface TokenExchangeConfig extends OAuthConfig {
+  readonly clientSecret: string;
+}
+
+export interface OAuthTokens {
+  readonly accessToken: string;
+  readonly refreshToken: string | null;
+  readonly expiresInSeconds: number;
+  readonly externalUserId: string | null;
+  readonly scope: string | null;
+}
+
+/** Minimal fetch signature so the exchange is testable without a real network. */
+export type FetchLike = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body: string },
+) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
+
+export class OAuthExchangeError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'OAuthExchangeError';
+  }
+}
+
+/**
+ * Exchanges an authorization code for tokens (authorization-code + PKCE). The
+ * client secret is used only here, server-side. Returns tokens the caller must
+ * encrypt at rest — this function never persists or logs them.
+ */
+export async function exchangeCodeForToken(
+  config: TokenExchangeConfig,
+  params: { code: string; codeVerifier: string },
+  fetchFn: FetchLike = globalThis.fetch as unknown as FetchLike,
+): Promise<OAuthTokens> {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    code: params.code,
+    redirect_uri: config.redirectUri,
+    code_verifier: params.codeVerifier,
+  }).toString();
+
+  const res = await fetchFn(config.tokenEndpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+    body,
+  });
+
+  if (!res.ok) {
+    throw new OAuthExchangeError('Falha na troca de token OAuth.', res.status);
+  }
+  const data = (await res.json()) as Record<string, unknown>;
+  const accessToken = typeof data.access_token === 'string' ? data.access_token : null;
+  if (!accessToken) {
+    throw new OAuthExchangeError('Resposta de token inválida (sem access_token).', 502);
+  }
+  return {
+    accessToken,
+    refreshToken: typeof data.refresh_token === 'string' ? data.refresh_token : null,
+    expiresInSeconds: typeof data.expires_in === 'number' ? data.expires_in : 0,
+    externalUserId:
+      data.user_id === undefined || data.user_id === null ? null : String(data.user_id),
+    scope: typeof data.scope === 'string' ? data.scope : null,
+  };
+}
