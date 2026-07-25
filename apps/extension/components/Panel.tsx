@@ -9,7 +9,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { analyzeListing, type CostProfileInput } from '../lib/analyze.js';
 import { formatBRL } from '@b7/calculations';
 import { isStale, relativeTime } from '../lib/format.js';
-import { storage, type SavedListing } from '../lib/storage.js';
+import { storage, type PriceSnapshot, type SavedListing } from '../lib/storage.js';
+import { summarizePriceHistory } from '../lib/history.js';
 import { MetricCard } from './MetricCard.js';
 
 interface PanelProps {
@@ -45,6 +46,7 @@ export function Panel({ listing, onClose }: PanelProps) {
   const [tab, setTab] = useState<Tab>('visao');
   const [profile, setProfile] = useState<CostProfileInput | null>(null);
   const [saved, setSaved] = useState(false);
+  const [snapshots, setSnapshots] = useState<PriceSnapshot[]>([]);
 
   const listingId = listing.externalListingId.value;
   const stale = isStale(listing.capturedAt);
@@ -52,7 +54,16 @@ export function Panel({ listing, onClose }: PanelProps) {
   useEffect(() => {
     storage.getCostProfile().then(setProfile);
     storage.getFavorites().then((f) => setSaved(f.some((l) => l.externalListingId === listingId)));
-  }, [listingId]);
+    if (listingId && listing.price.value !== null) {
+      storage
+        .recordSnapshot(listingId, { priceReais: listing.price.value, capturedAt: listing.capturedAt })
+        .then(setSnapshots);
+    } else if (listingId) {
+      storage.getSnapshots(listingId).then(setSnapshots);
+    }
+  }, [listingId, listing.price.value, listing.capturedAt]);
+
+  const history = useMemo(() => summarizePriceHistory(snapshots), [snapshots]);
 
   const { metrics } = useMemo(() => analyzeListing(listing, profile), [listing, profile]);
   const byKey = useMemo(() => new Map(metrics.map((m) => [m.key, m])), [metrics]);
@@ -173,12 +184,19 @@ export function Panel({ listing, onClose }: PanelProps) {
               </>
             )}
 
-            {tab === 'historico' && (
-              <div className="b7-empty">
-                <strong>Sem histórico ainda</strong>
-                <p>Monitore este anúncio para a B7 Radar registrar snapshots e mostrar vendas observadas e variações de preço ao longo do tempo.</p>
-              </div>
-            )}
+            {tab === 'historico' &&
+              (history ? (
+                <PriceHistory history={history} />
+              ) : (
+                <div className="b7-empty">
+                  <strong>Histórico começando agora</strong>
+                  <p>
+                    A B7 Radar registrou {snapshots.length === 1 ? '1 leitura' : `${snapshots.length} leituras`} de
+                    preço deste anúncio. Assim que o preço mudar em uma próxima visita, a variação real aparece aqui —
+                    nada é estimado.
+                  </p>
+                </div>
+              ))}
 
             {tab === 'visao' && !profile && (
               <div className="b7-hint">
@@ -215,6 +233,38 @@ function MetricGrid({ metrics }: { metrics: MetricValue[] }) {
 
 function pick(byKey: Map<string, MetricValue>, keys: string[]): MetricValue[] {
   return keys.map((k) => byKey.get(k)).filter((m): m is MetricValue => m !== undefined);
+}
+
+function PriceHistory({
+  history,
+}: {
+  history: import('../lib/history.js').PriceHistorySummary;
+}) {
+  const cents = (r: number) => formatBRL(Math.round(r * 100));
+  const up = history.deltaReais > 0;
+  const flat = history.deltaReais === 0;
+  const dirClass = flat ? 'b7-chip--muted' : up ? 'b7-chip--cal' : 'b7-chip--auth';
+  const sign = up ? '+' : '';
+  return (
+    <div className="b7-history">
+      <div className="b7-metric">
+        <div className="b7-metric__label">Variação de preço observada</div>
+        <div className="b7-metric__value">
+          {cents(history.firstReais)} → {cents(history.lastReais)}
+        </div>
+        <div className="b7-metric__tags">
+          <span className={`b7-chip ${dirClass}`}>
+            {flat ? 'estável' : `${sign}${cents(history.deltaReais)}`}
+            {history.deltaPercent !== null && !flat ? ` (${sign}${history.deltaPercent}%)` : ''}
+          </span>
+          <span className="b7-chip b7-chip--muted">deste anúncio</span>
+        </div>
+        <div className="b7-metric__note">
+          {history.count} leituras reais · mín {cents(history.minReais)} · máx {cents(history.maxReais)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── field renderers for captured (non-metric) listing fields ────────────────

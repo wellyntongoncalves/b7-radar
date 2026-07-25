@@ -8,7 +8,10 @@ const KEYS = {
   costProfile: 'b7.costProfile',
   favorites: 'b7.favorites',
   theme: 'b7.theme',
+  snapshots: 'b7.snapshots',
 } as const;
+
+const MAX_SNAPSHOTS = 60;
 
 export interface SavedListing {
   readonly externalListingId: string;
@@ -16,6 +19,12 @@ export interface SavedListing {
   readonly url: string;
   readonly priceReais: number | null;
   readonly savedAt: string;
+}
+
+/** A real price reading captured from the page at a real moment. */
+export interface PriceSnapshot {
+  readonly priceReais: number;
+  readonly capturedAt: string;
 }
 
 async function get<T>(key: string, fallback: T): Promise<T> {
@@ -48,4 +57,24 @@ export const storage = {
 
   getTheme: () => get<'light' | 'dark'>(KEYS.theme, 'light'),
   setTheme: (t: 'light' | 'dark') => set(KEYS.theme, t),
+
+  async getSnapshots(listingId: string): Promise<PriceSnapshot[]> {
+    const all = await get<Record<string, PriceSnapshot[]>>(KEYS.snapshots, {});
+    return all[listingId] ?? [];
+  },
+  /**
+   * Records a real price reading. Skips duplicates (same price as the last
+   * snapshot) so history reflects actual changes, never repeated visits.
+   */
+  async recordSnapshot(listingId: string, snap: PriceSnapshot): Promise<PriceSnapshot[]> {
+    if (!listingId || !Number.isFinite(snap.priceReais)) return [];
+    const all = await get<Record<string, PriceSnapshot[]>>(KEYS.snapshots, {});
+    const list = all[listingId] ?? [];
+    const last = list[list.length - 1];
+    if (last && last.priceReais === snap.priceReais) return list;
+    const next = [...list, snap].slice(-MAX_SNAPSHOTS);
+    all[listingId] = next;
+    await set(KEYS.snapshots, all);
+    return next;
+  },
 };
