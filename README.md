@@ -42,7 +42,16 @@ docs/                   Guia de marca, matriz de dados, arquitetura
 
 ```bash
 pnpm install
-pnpm test          # roda os testes de todos os pacotes (40 testes)
+pnpm test          # roda os testes de todos os pacotes
+pnpm lint          # ESLint (typescript-eslint) em todo o repo
+pnpm typecheck     # tsc --noEmit em todos os pacotes
+```
+
+### Backend (Fastify)
+
+```bash
+pnpm --filter @b7/api dev     # desenvolvimento (tsx watch)
+pnpm --filter @b7/api start   # produção (tsx) — sobe em API_HOST:API_PORT
 ```
 
 ### Extensão (Chrome)

@@ -34,7 +34,7 @@ describe('money', () => {
   });
 
   it('formats BRL in pt-BR', () => {
-    expect(formatBRL(20085).replace(/ /g, ' ')).toBe('R$ 200,85');
+    expect(formatBRL(20085).replace(/\s/g, ' ')).toBe('R$ 200,85');
   });
 
   it('formats percent in pt-BR', () => {

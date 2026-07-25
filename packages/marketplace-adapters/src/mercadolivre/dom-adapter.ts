@@ -28,8 +28,8 @@ export class MercadoLivreDomAdapter implements MarketplaceAdapter {
   readonly marketplace = Marketplace.MercadoLivre;
 
   identifyPage(url: string): PageKind {
-    let host = '';
-    let path = '';
+    let host: string;
+    let path: string;
     try {
       const u = new URL(url);
       host = u.hostname;
