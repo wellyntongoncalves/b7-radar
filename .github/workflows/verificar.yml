@@ -1,0 +1,42 @@
+# Lint, typecheck e testes do monorepo a cada push.
+#
+# O motivo concreto de existir: em 17/08/2026, um clone novo NÃO passava no
+# `pnpm typecheck`. Nove erros em @b7/extension — `defineBackground`,
+# `defineContentScript`, `createShadowRootUi` "não encontrados" — que parecem
+# código quebrado e são só os globais que o `wxt prepare` gera, sem nada
+# chamando o `wxt prepare`. Só apareceu porque alguém instalou do zero.
+#
+# Um CI é justamente "alguém instalando do zero, toda vez". Se o `postinstall`
+# que corrigiu aquilo for removido, este job cai no mesmo commit — em vez de
+# esperar meses até o próximo clone.
+name: verificar
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # corepack lê o campo `packageManager` do package.json e usa exatamente a
+      # versão registrada lá (pnpm@9.7.0). Fixar a versão numa action separada
+      # criaria um segundo lugar para manter em dia.
+      - run: corepack enable
+
+      # --frozen-lockfile: se o lockfile não corresponder ao package.json, o job
+      # falha em vez de resolver dependência nova por conta própria. É o que faz
+      # o CI testar o que está commitado, e não o que o npm resolveu hoje.
+      - name: Instalar
+        run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
